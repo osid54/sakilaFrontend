@@ -5,6 +5,7 @@ import "./Styles.css";
 const Landing = () => {
     const [films5, setFilms5Data] = useState([]);
     const [actors5, setActors5Data] = useState([]);
+    const [actorFilms, setActorFilms] = useState([]);
     const [selectedRow, setSelectedRow] = useState(null);
     const [selectedType, setSelectedType] = useState("");
 
@@ -23,6 +24,14 @@ const Landing = () => {
     const handleRowClick = (data, type) => {
         setSelectedRow(data);
         setSelectedType(type);
+        if (type === "actor") {
+            setActorFilms([]);
+            axios.get(`http://localhost:5000/actor5films?id=${data.ID}`)
+                .then(response => {
+                    setActorFilms(response.data);
+                })
+                .catch(error => console.error("Error fetching data:", error));
+        }
     };
 
     const closePopup = () => {
@@ -101,8 +110,8 @@ const Landing = () => {
                             <>
                                 <p><strong>First Name:</strong> {selectedRow.FIRST}</p>
                                 <p><strong>Last Name:</strong> {selectedRow.LAST}</p>
-                                <p><strong>Filmography:</strong> {selectedRow.FILMOGRAPHY}</p>
                                 <p><strong>Number of Films:</strong> {selectedRow.FILMCOUNT}</p>
+                                <p><strong>Top 5 Rented Films:</strong> {actorFilms.map(film => Object.values(film).join(", ")).join(", ")}</p>
                             </>
                         )}
 
