@@ -60,6 +60,7 @@ function Cust() {
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
             />
+            <FloatingButton />
         </div>
     );
 }
@@ -152,6 +153,30 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
     );
 }
 
+const FloatingButton = () => {
+    const [isOpen, setIsOpen] = useState(false);
 
+    const toggleOverlay = () => {
+        setIsOpen(!isOpen);
+    };
+
+    return (
+        <>
+            <button className="floating-btn" onClick={toggleOverlay}>
+                Manage Customers
+            </button>
+
+            {isOpen && (
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <h2>Overlay Title</h2>
+                        <p>This is some content inside the overlay.</p>
+                        <button onClick={toggleOverlay}>Close</button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
 
 export default Cust;
