@@ -156,49 +156,86 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 const FloatingButton = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [customerID, setCustomerID] = useState("");
-    const [customerData, setCustomerData] = useState(null);
-    const [updatedData, setUpdatedData] = useState({});
+    const [customerData, setCustomerData] = useState({ first_name: "", last_name: "", email: "" });
+    const [message, setMessage] = useState("");
+    const [custExists, setCustExists] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
 
     const toggleOverlay = () => {
         setIsOpen(!isOpen);
-        setCustomerData(null); // Reset on close
-        setUpdatedData({});
+        resetForm();
     };
 
-    const handleSearch = () => {
-        if (!customerID) return;
-        axios.get(`http://localhost:5000/customers?id=${customerID}`)
+    const resetForm = () => {
+        setCustomerID("");
+        setCustomerData({ first_name: "", last_name: "", email: "" });
+        setMessage("");
+        setCustExists(false);
+        setIsAdding(false);
+    };
+
+    const handleSearchCustomer = () => {
+        if (!customerID || isNaN(customerID)) {
+            setMessage("Please enter a valid customer ID.");
+            return;
+        }
+
+        axios.get(`http://localhost:5000/customers/${customerID}`)
             .then(response => {
-                setCustomerData(response.data);
-                setUpdatedData(response.data); // Pre-fill the update fields
+                if (response.data && !response.data.error) {
+                    setCustExists(true);
+                    setIsAdding(false);
+                    setCustomerData({
+                        first_name: response.data.FIRST,
+                        last_name: response.data.LAST,
+                        email: response.data.EMAIL,
+                    });
+                    setMessage("Customer found.");
+                } else {
+                    setMessage("No customer found.");
+                    setCustExists(false);
+                }
             })
-            .catch(error => {
-                console.error("Error fetching customer:", error);
-                setCustomerData(null);
+            .catch(() => {
+                setMessage("Error fetching customer.");
+                setCustExists(false);
             });
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setUpdatedData(prev => ({ ...prev, [name]: value }));
+    const handleAddCustomerClick = () => {
+        resetForm();
+        setIsAdding(true);
+        setMessage("Enter details to add a new customer.");
     };
 
-    const handleUpdate = () => {
-        if (!customerID || !customerData) return;
+    const handleEditCustomer = () => {
+        if (!customerData.first_name || !customerData.last_name || !customerData.email) {
+            setMessage("Please fill in all fields.");
+            return;
+        }
 
-        // Determine whether to use PUT or PATCH
-        const method = JSON.stringify(updatedData) === JSON.stringify(customerData) ? "PUT" : "PATCH";
+        if (custExists) {
+            axios.patch(`http://localhost:5000/customers/${customerID}`, customerData)
+                .then(() => setMessage("Customer updated successfully."))
+                .catch(() => setMessage("Failed to update customer."));
+        } else if (isAdding) {
+            axios.post(`http://localhost:5000/customers`, customerData)
+                .then(() => {
+                    resetForm();
+                    setMessage("Customer added successfully.");
+                })
+                .catch(() => setMessage("Failed to add customer."));
+        }
+    };
 
-        axios({
-            method: method,
-            url: `http://localhost:5000/customers/${customerID}`,
-            data: updatedData
-        })
-            .then(response => {
-                console.log("Update successful:", response.data);
-                alert("Customer updated successfully!");
+    const handleDeleteCustomer = () => {
+        if (!customerID) return;
+        axios.delete(`http://localhost:5000/customers/${customerID}`)
+            .then(() => {
+                resetForm();
+                setMessage("Customer deleted successfully.");
             })
-            .catch(error => console.error("Error updating customer:", error));
+            .catch(() => setMessage("Error deleting customer."));
     };
 
     return (
@@ -210,52 +247,66 @@ const FloatingButton = () => {
             {isOpen && (
                 <div className="modal-overlay">
                     <div className="modal">
-                        <h2>Customer Management</h2>
+                        <h2>Manage Customers</h2>
 
-                        {/* Search Section */}
                         <input
                             type="text"
                             placeholder="Enter Customer ID"
                             value={customerID}
                             onChange={(e) => setCustomerID(e.target.value)}
                         />
-                        <button onClick={handleSearch}>Search</button>
+                        <button onClick={handleSearchCustomer}>Search</button>
+                        <button onClick={handleAddCustomerClick}>Add</button>
 
-                        {/* If Customer Data Exists, Show Editable Fields */}
-                        {customerData && (
-                            <div>
-                                <h3>Edit Customer Info</h3>
-                                <input
-                                    type="text"
-                                    name="first_name"
-                                    value={updatedData.first_name || ""}
-                                    onChange={handleInputChange}
-                                    placeholder="First Name"
-                                />
-                                <input
-                                    type="text"
-                                    name="last_name"
-                                    value={updatedData.last_name || ""}
-                                    onChange={handleInputChange}
-                                    placeholder="Last Name"
-                                />
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={updatedData.email || ""}
-                                    onChange={handleInputChange}
-                                    placeholder="Email"
-                                />
-                                <button onClick={handleUpdate}>Update</button>
-                            </div>
+                        <div>
+                            {message && <p className="message">{message}</p>}
+                        </div>
+
+                        {(custExists || isAdding) && (
+                            <>
+                                <div>
+                                    <input
+                                        type="text"
+                                        placeholder="First Name"
+                                        value={customerData.first_name}
+                                        onChange={(e) => setCustomerData({ ...customerData, first_name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <input
+                                        type="text"
+                                        placeholder="Last Name"
+                                        value={customerData.last_name}
+                                        onChange={(e) => setCustomerData({ ...customerData, last_name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <input
+                                        type="email"
+                                        placeholder="Email"
+                                        value={customerData.email}
+                                        onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })}
+                                    />
+                                </div>
+                                <button onClick={handleEditCustomer}>
+                                    {custExists ? "Update" : "Save"}
+                                </button>
+                                {custExists && <button onClick={handleDeleteCustomer}>Delete</button>}
+                            </>
                         )}
 
-                        <button onClick={toggleOverlay}>Close</button>
+                        <div>
+                            <button onClick={toggleOverlay}>Close</button>
+                        </div>
                     </div>
                 </div>
             )}
         </>
     );
 };
+
+
+
+
 
 export default Cust;
