@@ -155,9 +155,50 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 
 const FloatingButton = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [customerID, setCustomerID] = useState("");
+    const [customerData, setCustomerData] = useState(null);
+    const [updatedData, setUpdatedData] = useState({});
 
     const toggleOverlay = () => {
         setIsOpen(!isOpen);
+        setCustomerData(null); // Reset on close
+        setUpdatedData({});
+    };
+
+    const handleSearch = () => {
+        if (!customerID) return;
+        axios.get(`http://localhost:5000/customers?id=${customerID}`)
+            .then(response => {
+                setCustomerData(response.data);
+                setUpdatedData(response.data); // Pre-fill the update fields
+            })
+            .catch(error => {
+                console.error("Error fetching customer:", error);
+                setCustomerData(null);
+            });
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setUpdatedData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleUpdate = () => {
+        if (!customerID || !customerData) return;
+
+        // Determine whether to use PUT or PATCH
+        const method = JSON.stringify(updatedData) === JSON.stringify(customerData) ? "PUT" : "PATCH";
+
+        axios({
+            method: method,
+            url: `http://localhost:5000/customers/${customerID}`,
+            data: updatedData
+        })
+            .then(response => {
+                console.log("Update successful:", response.data);
+                alert("Customer updated successfully!");
+            })
+            .catch(error => console.error("Error updating customer:", error));
     };
 
     return (
@@ -169,8 +210,46 @@ const FloatingButton = () => {
             {isOpen && (
                 <div className="modal-overlay">
                     <div className="modal">
-                        <h2>Overlay Title</h2>
-                        <p>This is some content inside the overlay.</p>
+                        <h2>Customer Management</h2>
+
+                        {/* Search Section */}
+                        <input
+                            type="text"
+                            placeholder="Enter Customer ID"
+                            value={customerID}
+                            onChange={(e) => setCustomerID(e.target.value)}
+                        />
+                        <button onClick={handleSearch}>Search</button>
+
+                        {/* If Customer Data Exists, Show Editable Fields */}
+                        {customerData && (
+                            <div>
+                                <h3>Edit Customer Info</h3>
+                                <input
+                                    type="text"
+                                    name="first_name"
+                                    value={updatedData.first_name || ""}
+                                    onChange={handleInputChange}
+                                    placeholder="First Name"
+                                />
+                                <input
+                                    type="text"
+                                    name="last_name"
+                                    value={updatedData.last_name || ""}
+                                    onChange={handleInputChange}
+                                    placeholder="Last Name"
+                                />
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={updatedData.email || ""}
+                                    onChange={handleInputChange}
+                                    placeholder="Email"
+                                />
+                                <button onClick={handleUpdate}>Update</button>
+                            </div>
+                        )}
+
                         <button onClick={toggleOverlay}>Close</button>
                     </div>
                 </div>
