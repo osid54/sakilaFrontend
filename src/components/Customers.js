@@ -7,7 +7,7 @@ function Cust() {
     const [filterText, setFilterText] = useState('');
     const [searchFilter, setSearchFilter] = useState('FIRST');
     const [currentPage, setCurrentPage] = useState(1);
-    const [customersPerPage, setCustomersPerPage] = useState(10); // Default to 10
+    const [customersPerPage, setCustomersPerPage] = useState(10);
 
     useEffect(() => {
         axios.get('http://localhost:5000/customers')
@@ -60,7 +60,7 @@ function Cust() {
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
             />
-            <FloatingButton />
+            <ManageButton />
         </div>
     );
 }
@@ -153,7 +153,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
     );
 }
 
-const FloatingButton = () => {
+const ManageButton = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [customerID, setCustomerID] = useState("");
     const [customerData, setCustomerData] = useState({ first_name: "", last_name: "", email: "" });
@@ -259,7 +259,7 @@ const FloatingButton = () => {
                         <button onClick={handleAddCustomerClick}>Add</button>
 
                         <div>
-                            {message && <p className="message">{message}</p>}
+                            {message && <>{message}</>}
                         </div>
 
                         {(custExists || isAdding) && (
@@ -292,6 +292,7 @@ const FloatingButton = () => {
                                     {custExists ? "Update" : "Save"}
                                 </button>
                                 {custExists && <button onClick={handleDeleteCustomer}>Delete</button>}
+                                <ManageRentals customerID={customerID} />
                             </>
                         )}
 
@@ -305,7 +306,79 @@ const FloatingButton = () => {
     );
 };
 
+const ManageRentals = ({ customerID }) => {
+    const [isRentalPopupOpen, setIsRentalPopupOpen] = useState(false);
+    const [rentalHistory, setRentalHistory] = useState([]);
 
+    const toggleRentalPopup = () => {
+        setIsRentalPopupOpen(!isRentalPopupOpen);
+        if (!isRentalPopupOpen) {
+            fetchRentalHistory();
+        }
+    };
+
+    const fetchRentalHistory = () => {
+        if (!customerID) return;
+        axios.get(`http://localhost:5000/customers/${customerID}/rentals`)
+            .then(response => {
+                setRentalHistory(response.data);
+            })
+            .catch(() => {
+                setRentalHistory([]);
+            });
+    };
+
+    const handleReturnRental = (rentalId) => {
+        axios.patch(`http://localhost:5000/rentals/${rentalId}/return`)
+            .then(() => {
+                fetchRentalHistory();
+            })
+            .catch(() => {
+                alert("Error marking rental as returned.");
+            });
+    };
+
+    return (
+        <>
+            <button onClick={toggleRentalPopup}>Rentals</button>
+
+            {isRentalPopupOpen && (
+                <div className="modal-overlay">
+                    <div className="modalRent">
+                        <h2>Rental History</h2>
+                        <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #ccc" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                <thead style={{ position: "sticky", top: "0", zIndex: "2" }}>
+                                    <tr>
+                                        <th>Rental ID</th>
+                                        <th>Rental Date</th>
+                                        <th>Return Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rentalHistory.map((rental) => (
+                                        <tr key={rental.rental_id}>
+                                            <td>{rental.rental_id}</td>
+                                            <td>{rental.rental_date}</td>
+                                            <td>
+                                                {rental.return_date || (
+                                                    <button onClick={() => handleReturnRental(rental.rental_id)}>
+                                                        Mark as Returned
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <button onClick={toggleRentalPopup}>Close</button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
 
 
 

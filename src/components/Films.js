@@ -60,6 +60,7 @@ function Films() {
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
             />
+            <RentButton/>
         </div>
     );
 }
@@ -160,5 +161,79 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
         </div>
     );
 }
+
+const RentButton = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [filmID, setFilmID] = useState("");
+    const [customerID, setCustomerID] = useState("");
+    const [message, setMessage] = useState("");
+
+    const toggleOverlay = () => {
+        setIsOpen(!isOpen);
+        resetForm();
+    };
+
+    const resetForm = () => {
+        setFilmID("");
+        setCustomerID("");
+        setMessage("");
+    };
+
+    const handleRentFilm = () => {
+        if (!filmID || !customerID) {
+            setMessage("Please enter both Film ID and Customer ID.");
+            return;
+        }
+
+        axios.post("http://localhost:5000/rent", { film_id: filmID, customer_id: customerID })
+            .then(response => setMessage(response.data.message))
+            .catch(error => {
+                if (error.response) {
+                    setMessage(error.response.data.error);
+                } else {
+                    setMessage("Failed to process rental.");
+                }
+            });
+    };
+
+
+    return (
+        <>
+            <button className="floating-btn" onClick={toggleOverlay}>
+                Rent a Film
+            </button>
+
+            {isOpen && (
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <h2>Rent a Film</h2>
+
+                        <div>
+                            <input
+                                type="number"
+                                placeholder="Enter Film ID"
+                                value={filmID}
+                                onChange={(e) => setFilmID(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <input
+                                type="number"
+                                placeholder="Enter Customer ID"
+                                value={customerID}
+                                onChange={(e) => setCustomerID(e.target.value)}
+                            />
+                        </div>
+                        {message && <p>{message}</p>}
+                        <div>
+                            <button onClick={handleRentFilm}>Confirm Rental</button>
+                        </div>
+                        <button onClick={toggleOverlay}>Close</button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
 
 export default Films;
